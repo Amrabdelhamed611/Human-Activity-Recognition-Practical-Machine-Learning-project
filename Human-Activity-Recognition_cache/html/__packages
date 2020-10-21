@@ -1,0 +1,16 @@
+base
+lattice
+ggplot2
+caret
+rpart
+rpart.plot
+RColorBrewer
+RGtk2
+tibble
+bitops
+rattle
+randomForest
+gbm
+foreach
+iterators
+doParallel

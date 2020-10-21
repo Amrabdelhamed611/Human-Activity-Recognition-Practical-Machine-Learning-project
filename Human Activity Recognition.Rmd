@@ -1,0 +1,205 @@
+---
+title: "Human Activity Recognition"
+author: "Amr Abdelhamed"
+date: "10/20/2020"
+output: 
+  html_document: 
+    keep_md: yes
+---
+
+# Executive Summary
+In this report,using **[Groupware@LES Human Activity Recognition  Project ](http://web.archive.org/web/20161224072740/http:/groupware.les.inf.puc-rio.br/har)** data will build a machine learning modal to classify human activity with **99 %** accuracy using **Random Forest** and **Gradient Boosting** .
+
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement - a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, our goal will be to use data from accelerometers on the belt, forearm, arm, and dumbbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here:**[Groupware@LES Human Activity Recognition  Project ](http://web.archive.org/web/20161224072740/http:/groupware.les.inf.puc-rio.br/har)**.
+
+```{r import, include=TRUE,message=FALSE,warning=FALSE}
+library(caret)
+library(rpart)
+library(rpart.plot)
+library(RColorBrewer)
+library(RGtk2)
+library(rattle)
+library(randomForest)
+library(gbm)
+library(doParallel)  #use Parallel processing
+set.seed(611)
+cl <- makeCluster(detectCores() - 1) 
+```
+
+# Data Descriptions
+
+* The **training data** for this project are available here: **[pml-training.cs](https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv)**
+
+* The **test data** are available here: **[pml-testing.csv](https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv)**
+
+* The data for this project come from this source: **[Groupware@LES Human Activity Recognition  Project ](http://web.archive.org/web/20161224072740/http:/groupware.les.inf.puc-rio.br/har)**.
+
+by: __Ugulino, W.; Cardador, D.; Vega, K.; Velloso, E.; Milidiu, R.; Fuks, H. Wearable Computing:  Accelerometers' Data Classification of Body Postures and Movements. Proceedings of 21st Brazilian Symposium on Artificial Intelligence. Advances in Artificial Intelligence - SBIA 2012. In: Lecture Notes in Computer Science. , pp. 52-61. Curitiba, PR: Springer Berlin / Heidelberg, 2012. ISBN 978-3-642-34458-9. DOI: 10.1007/978-3-642-34459-6_6. Cited by 2 (Google Scholar)__ 
+
+# Dowenload and loading the data
+```{r data download}
+if( !(file.exists('pml-training.csv')) ){
+  train_url <- "http://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+  download.file(train_url, 'pml-training.csv')}
+
+if( !(file.exists('pml-testing.csv')) ) {
+  test_url  <- "http://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+  download.file(test_url, 'pml-testing.csv')}
+
+trainData <- read.csv('pml-training.csv')
+testData <- read.csv('pml-testing.csv')
+
+dim(trainData)
+
+```
+
+# Data cleaning and preprocessing
+
+**Identify** and **Remove** the columns that has **very small variability** as is not relevant to include them in the model.
+```{r non zero varince remove }
+non_zero_var <- (nearZeroVar(trainData,names = TRUE ,allowParallel = T))
+
+print(paste('There are',length(non_zero_var) ,"cloumnes has near zero variance." ))
+trainData <- trainData[,!(colnames(trainData) %in% non_zero_var)]
+testData <- testData[,!(colnames(testData) %in% non_zero_var)]
+dim(trainData)
+
+```
+**60 columns** removed now the data contain **100 columns**.
+
+**Identify** and **Remove** the the columns that has more then **80 percent** of the rows **`NA` values**.
+```{r NA remove}
+NAcol <-(sapply(trainData, function(x) mean(is.na(x))) ) > .80
+print(paste('There',sum(NAcol) ,"cloumnes has more then 80 percent of there rows NA values." ))
+trainData <- trainData[,!(NAcol)]
+testData <- testData[,!(NAcol)]
+dim(trainData)
+```
+**41 columns** removed now the data contain **59 columns**.
+
+**Identify** the the columns that has **any `NA` values** to handle the missing values.
+```{r }
+colnames(trainData[,(sapply(trainData, function(x) {sum(is.na(x)) }) > 0)])
+```
+There is no **any missing values** in the data.
+
+Form documentation of the data there some columns for `user_name` and `time` when the data collected so will remove the those columns.
+```{r }
+dnames <- c('X',"user_name","raw_timestamp_part_1","raw_timestamp_part_2","cvtd_timestamp")
+trainData <- trainData[,!(colnames(trainData) %in% dnames)]
+testData <- testData[,!(colnames(testData) %in% dnames)]
+trainData$classe <-factor(trainData$classe)
+testData$problem_id <-factor(testData$problem_id)
+```
+
+After the data **cleaning** will **Split** the data to **train** and **validation** sets.
+```{r data splitting}
+inTrain <- createDataPartition(trainData$classe, p=0.8, list=FALSE)
+training <- trainData[inTrain,]
+validation <- trainData[-inTrain,]
+
+dim(training)
+dim(validation)
+```
+
+# Model fitting
+
+## Decision tree fitting using 10 fold cross valuation:
+
+`registerDoParallel(cl)` to start Parallel processing using `CPU` cores cluster created by library **doParallel**.
+```{r Decision tree , cache=TRUE}
+registerDoParallel(cl)
+fitControl <- trainControl(method = "cv",
+number = 10,
+allowParallel = TRUE,
+verbose=FALSE)
+ptm <- proc.time()
+DT_Model <- train(classe~. ,data=training,method = 'rpart',trControl= fitControl)
+DT_time<- proc.time() - ptm
+DT_time
+```
+
+```{r}
+DT_Model$finalModel
+```
+
+```{r Decision tree Accuracy}
+
+DT_Model_prediction<- predict(DT_Model, validation)
+DT_Model_cm<-confusionMatrix(DT_Model_prediction,validation$classe)
+DT_Model_cm
+
+```
+The **Decision Tree Accuracy** not satisfying but **56% Accuracy** for one tree not bad score so try to fit random forest.
+
+## Random Forest fitting using 10 fold cross valuation:
+
+```{r random forest , cache=TRUE}
+fitControl <- trainControl(method = "cv",
+number = 10,
+allowParallel = TRUE,
+verbose=FALSE)
+ptm <- proc.time()
+RF_Model <- train(classe~. ,data=training,method = 'rf',ntree= 80,trControl= fitControl)
+RF_time <-proc.time() - ptm
+RF_time
+```
+
+
+```{r random forest Accuracy}
+RF_Model_prediction<- predict(RF_Model, validation)
+RF_Model_cm<-confusionMatrix(RF_Model_prediction, validation$classe)
+RF_Model_cm
+```
+**Random Forest** has higher **training time** and also **superior accuracy** then the Decision Tree **99.8%** which is close to **human Accuracy**.
+
+## Gradient Boosting fitting using 10 fold cross valuation:
+
+```{r Gradient Boosting , cache=TRUE} 
+
+fitControl <- trainControl(method = "cv",
+number = 10,
+allowParallel = FALSE,
+verbose=FALSE)
+ptm <- proc.time()
+GB_Model<- train(classe~., data=training, method ='gbm',trControl= fitControl,verbose=FALSE)
+GB_time <-proc.time() - ptm
+
+stopCluster(cl)
+
+```
+
+```{r Gradient Boosting Accuracy}
+GB_Model_prediction<- predict(GB_Model, validation)
+GB_Model_cm<-confusionMatrix(GB_Model_prediction,factor(validation$classe))
+GB_Model_cm
+```
+The accuracy of **Gradient Boosting** is **99%**,approximately equals **the Random Forest**.
+
+## Compere Random Forest and Gradient Boosting scores:
+
+**Subtract** overall **Gradient Boosting** score from overall **Random Forest** score. 
+```{r}
+round(RF_Model_cm$overall -GB_Model_cm$overall,4)
+paste('random forest time ',round(RF_time[3]/60,3),'minute' )
+paste('Gradient Boosting time ',round(GB_time[3]/60,3), 'minute')
+```
+The **difference** between two overall score is very small but the **Random Forest has smaller training time**.
+
+# Expected out of sample error
+```{r}
+paste('Out of sample error is equall',round(1- RF_Model_cm$overall['Accuracy'],digits =5))
+```
+The expected **out-of-sample error** is estimated at **`0.002`, or `0.2%`**. The expected **out-of-sample error** is calculated as **`1 - accuracy`** for predictions made against the cross-validation set. Our Test data set comprises 20 cases. With an accuracy above 99% on our cross-validation data, we can expect that very few, or none, of the test samples will be **miss-classified**.
+
+# Conclusion
+
+**we conclude that, Random Forest is more accurate than Gradient Boosting Model and faster also.**
+
+
+# Prediction by Random Forest Model on testing data.
+
+```{r}
+testData$problem_id
+predict(RF_Model, testData)
+```
