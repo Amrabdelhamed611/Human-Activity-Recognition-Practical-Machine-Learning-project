@@ -467,7 +467,7 @@ DT_Model &lt;- train(classe~. ,data=training,method = &#39;rpart&#39;,trControl=
 DT_time&lt;- proc.time() - ptm
 DT_time</code></pre>
 <pre><code>##    user  system elapsed 
-##    3.08    0.02    5.86</code></pre>
+##    3.03    0.03    5.83</code></pre>
 <pre class="r"><code>DT_Model$finalModel</code></pre>
 <pre><code>## n= 15699 
 ## 
@@ -535,7 +535,7 @@ RF_Model &lt;- train(classe~. ,data=training,method = &#39;rf&#39;,ntree= 80,trC
 RF_time &lt;-proc.time() - ptm
 RF_time</code></pre>
 <pre><code>##    user  system elapsed 
-##    6.88    0.04   56.17</code></pre>
+##    6.69    0.09   55.45</code></pre>
 <pre class="r"><code>RF_Model_prediction&lt;- predict(RF_Model, validation)
 RF_Model_cm&lt;-confusionMatrix(RF_Model_prediction, validation$classe)
 RF_Model_cm</code></pre>
@@ -630,9 +630,9 @@ GB_Model_cm</code></pre>
 ## AccuracyPValue  McnemarPValue 
 ##         0.0000            NaN</code></pre>
 <pre class="r"><code>paste(&#39;random forest time &#39;,round(RF_time[3]/60,3),&#39;minute&#39; )</code></pre>
-<pre><code>## [1] &quot;random forest time  0.936 minute&quot;</code></pre>
+<pre><code>## [1] &quot;random forest time  0.924 minute&quot;</code></pre>
 <pre class="r"><code>paste(&#39;Gradient Boosting time &#39;,round(GB_time[3]/60,3), &#39;minute&#39;)</code></pre>
-<pre><code>## [1] &quot;Gradient Boosting time  7.439 minute&quot;</code></pre>
+<pre><code>## [1] &quot;Gradient Boosting time  7.512 minute&quot;</code></pre>
 <p>The <strong>difference</strong> between two overall score is very small but the <strong>Random Forest has smaller training time</strong>.</p>
 </div>
 </div>
@@ -648,9 +648,6 @@ GB_Model_cm</code></pre>
 </div>
 <div id="prediction-by-random-forest-model-on-testing-data." class="section level1">
 <h1>Prediction by Random Forest Model on testing data.</h1>
-<pre class="r"><code>testData$problem_id</code></pre>
-<pre><code>##  [1] 1  2  3  4  5  6  7  8  9  10 11 12 13 14 15 16 17 18 19 20
-## Levels: 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20</code></pre>
 <pre class="r"><code>predict(RF_Model, testData)</code></pre>
 <pre><code>##  [1] B A B A A E D B A A B C B A E E A B B B
 ## Levels: A B C D E</code></pre>

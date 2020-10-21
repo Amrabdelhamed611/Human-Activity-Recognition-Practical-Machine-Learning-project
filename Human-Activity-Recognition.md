@@ -2,8 +2,8 @@
 title: "Human Activity Recognition"
 author: "Amr Abdelhamed"
 date: "10/20/2020"
-output: 
-  html_document: 
+output:
+  html_document:
     keep_md: yes
 ---
 
@@ -168,7 +168,7 @@ DT_time
 
 ```
 ##    user  system elapsed 
-##    3.08    0.02    5.86
+##    3.03    0.03    5.83
 ```
 
 
@@ -256,7 +256,7 @@ RF_time
 
 ```
 ##    user  system elapsed 
-##    6.88    0.04   56.17
+##    6.69    0.09   55.45
 ```
 
 
@@ -381,7 +381,7 @@ paste('random forest time ',round(RF_time[3]/60,3),'minute' )
 ```
 
 ```
-## [1] "random forest time  0.936 minute"
+## [1] "random forest time  0.924 minute"
 ```
 
 ```r
@@ -389,7 +389,7 @@ paste('Gradient Boosting time ',round(GB_time[3]/60,3), 'minute')
 ```
 
 ```
-## [1] "Gradient Boosting time  7.439 minute"
+## [1] "Gradient Boosting time  7.512 minute"
 ```
 The **difference** between two overall score is very small but the **Random Forest has smaller training time**.
 
@@ -411,15 +411,6 @@ The expected **out-of-sample error** is estimated at **`0.002`, or `0.2%`**. The
 
 # Prediction by Random Forest Model on testing data.
 
-
-```r
-testData$problem_id
-```
-
-```
-##  [1] 1  2  3  4  5  6  7  8  9  10 11 12 13 14 15 16 17 18 19 20
-## Levels: 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20
-```
 
 ```r
 predict(RF_Model, testData)
